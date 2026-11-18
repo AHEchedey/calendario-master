@@ -92,7 +92,8 @@ def build(data, subjects=None, holidays=True):
     ]
     for s in data.get("subjects", []):
         sid = s["id"]
-        if subjects and sid not in subjects:
+        # Se filtra por id de asignatura O por itinerario (path)
+        if subjects and sid not in subjects and s.get("path") not in subjects:
             continue
         name = s.get("name", sid)
         for l in s.get("lectures", []):
@@ -121,10 +122,23 @@ def main():
     ap.add_argument("output", nargs="?", default="calendar.ics")
     ap.add_argument("--subjects", help="IDs separados por comas, p. ej. GTI,IC")
     ap.add_argument("--no-holidays", action="store_true")
+    ap.add_argument("--list", action="store_true", help="lista asignaturas e IDs y sale")
     a = ap.parse_args()
 
     data = load(a.source)
-    subjects = set(a.subjects.split(",")) if a.subjects else None
+    if a.list:
+        for s in data.get("subjects", []):
+            print(f"id={s['id']}  itinerario={s.get('path')}  nombre={s.get('name')}  "
+                  f"clases={len(s.get('lectures', []))}  examenes={len(s.get('exams', []))}")
+        return
+    subjects = set(x.strip() for x in a.subjects.split(",")) if a.subjects else None
+    if subjects:
+        known = {s["id"] for s in data.get("subjects", [])} | \
+                {s.get("path") for s in data.get("subjects", [])}
+        missing = subjects - known
+        if missing:
+            sys.exit(f"ERROR: no existen estos IDs en el JSON: {', '.join(sorted(missing))}. "
+                     f"Usa --list para ver los disponibles.")
     ics = build(data, subjects, not a.no_holidays)
     with open(a.output, "w", encoding="utf-8", newline="") as f:
         f.write(ics)
