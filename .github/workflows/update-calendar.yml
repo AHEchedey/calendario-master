@@ -23,7 +23,7 @@ jobs:
       # Para no incluir los festivos, añade --no-holidays al comando.
       - name: Generar calendar.ics
         env:
-          SUBJECTS: "GTI,IC,ID"
+          SUBJECTS: "FGT,FID,FIS,ASS,DOS,MLE,BD,AINE,GGTC,MOD,PSA,TVI"
         run: python generate_ics.py ${SUBJECTS:+--subjects "$SUBJECTS"}
 
       - name: Publicar si ha cambiado
