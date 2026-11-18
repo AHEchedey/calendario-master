@@ -1,0 +1,40 @@
+name: Actualizar calendar.ics desde el calendario público
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # cada 6 horas
+  workflow_dispatch:         # botón manual en la pestaña Actions
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Lee https://inmahernandez.github.io/calendar-master/calendar.json
+      # (URL por defecto del script) y escribe calendar.ics en la raíz.
+      # Si la descarga falla, el paso termina con error y no se publica nada.
+      # EDITA ESTA LISTA: deja solo los IDs de tus asignaturas, separados por comas.
+      # IDs disponibles: GTI, IC, ID, SE, IS, I+D
+      # Para incluir todas, deja SUBJECTS vacío ("").
+      # Para no incluir los festivos, añade --no-holidays al comando.
+      - name: Generar calendar.ics
+        env:
+          SUBJECTS: "GTI,IC,ID"
+        run: python generate_ics.py ${SUBJECTS:+--subjects "$SUBJECTS"}
+
+      - name: Publicar si ha cambiado
+        run: |
+          # DTSTAMP cambia en cada ejecución: se ignora al comparar
+          if git ls-files --error-unmatch calendar.ics >/dev/null 2>&1 && git diff --quiet -I'^DTSTAMP' -- calendar.ics; then
+            echo "Sin cambios reales."
+            exit 0
+          fi
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add calendar.ics
+          git commit -m "Actualizar calendar.ics" || exit 0
+          git push
